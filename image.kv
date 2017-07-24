@@ -1,0 +1,86 @@
+#:kivy 1.1.0
+#:import Win kivy.core.window.Window
+#:import FileBrowser kivy.garden.filebrowser
+#:import plt matplotlib.pyplot
+# in this file are defined nearly all visual aspects of app
+<MainWidget>:
+    canvas:
+        Color:
+            rgba: 250/255, 240/255, 230/255,1
+        Rectangle:
+            source: 'blank.png'
+            size: self.size
+            # change default background of app from gray to some white-ish
+    BoxLayout:
+        size: Win.size
+        id: mainbox
+        orientation: 'vertical'
+        BoxLayout:
+            height: '36dp'
+            spacing: '8dp'
+            size_hint_y: None
+            Button:
+                text: 'Load File'
+                width: '128dp'
+                height: '36dp'
+                size_hint: (None, None)
+                on_release: root.show_load()
+            Spinner:
+                id: cmap_spinner
+                text: 'rainbow'
+                width: '128dp'
+                height: '36dp'
+                size_hint: (None, None)
+                sync_height: True
+                #values: ('rainbow', 'viridis', 'plasma', 'inferno', 'magma', 'jet', 'gray') # simpler list of cmaps
+                values: tuple(m for m in plt.cm.datad if not m.endswith("_r"))
+                # probably overkill, spinner with all available colormaps for matplotlib
+        BoxLayout:
+            height: '36dp'
+            spacing: '8dp'
+            cols: 2
+            size_hint_y: None
+            Label:
+                text: 'azimuth: {:.2f}'.format(azimuth_slider.value)
+                color: 0,0,0,1
+                size_hint_x: .3
+            SpecSlider:
+                id: azimuth_slider
+                min: -90
+                max: 90
+                step: 1
+                orientation: 'horizontal'
+                disabled: True
+        GridLayout:
+            cols: 2
+            Image:
+                size_hint_x: .85
+				size_hint_y: 1
+                id: surf_image
+                source: 'blank.png'
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint_x: .15
+                Label:
+                    text: 'elevation: {:.2f}'.format(elevation_slider.value)
+                    color: 0,0,0,1
+                    size_hint_y: .1
+                SpecSlider:
+                    id: elevation_slider
+                    size_hint_y: .9
+                    min: -180
+                    max: 180
+                    step: 1
+                    orientation: 'vertical'
+                    disabled: True
+
+<LoadDialog>:
+    BoxLayout:
+        size: root.size
+        pos: root.pos
+        orientation: "vertical"
+		FileBrowser:
+			select_string: 'Select'
+			on_submit: root.load(self.selection[0])
+			on_canceled: root.cancel()
+			on_success: root.load(self.selection[0])
