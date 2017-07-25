@@ -50,7 +50,7 @@
                 max: 90
                 step: 1
                 orientation: 'horizontal'
-                disabled: True
+                disabled: True # slider are disabled before loading file, just to prevent calling events
         GridLayout:
             cols: 2
             Image:
@@ -75,12 +75,51 @@
                     disabled: True
 
 <LoadDialog>:
+    size: root.size
+    pos: root.pos
+    orientation: "vertical"
+    FileBrowser:
+        select_string: 'Select'
+        #on_submit: root.load(self.selection[0])
+        on_canceled: root.cancel()
+        on_success: root.load(self.selection[0])
+			
+<WrongFileDialog>:
+    title: 'Wrong File'
+    size_hint: 1.0, 0.6
+    auto_dismiss: False
     BoxLayout:
-        size: root.size
-        pos: root.pos
-        orientation: "vertical"
-		FileBrowser:
-			select_string: 'Select'
-			on_submit: root.load(self.selection[0])
-			on_canceled: root.cancel()
-			on_success: root.load(self.selection[0])
+        orientation: 'vertical'
+        Label:
+            text: 'Unsupported file type. Supported file types are: matlab mat files and image files. Please choose again.'
+        Button:
+            text: 'Ok'
+            size_hint: None, None
+            height: '36dp'
+            width: '128dp'
+            pos_hint: {'center_x': 0.5}
+            on_release: root.reload()
+
+<SelectMatVariable>:
+    title: 'Select Variable'
+    auto_dismiss: False
+    size_hint: .8, .6
+    BoxLayout:
+        orientation: 'vertical'
+        spacing: 3*self.height/4
+        Spinner:
+            id: mat_spinner
+            size_hint: None, None
+            pos_hint: {'center_x': 0.5}
+            height: '36dp'
+            width: '128dp'
+            text: root.values[0]
+            values: root.values
+            sync_height: True
+        Button:
+            text: 'Ok'
+            height: '36dp'
+            width: '128dp'
+            pos_hint: {'center_x': 0.5}
+            size_hint: None, None
+            on_release: root.dismiss()

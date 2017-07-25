@@ -4,7 +4,7 @@ from kivy.app import App
 from kivy.uix.slider import Slider
 from kivy.uix.widget import Widget
 from kivy.uix.popup import Popup
-from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.boxlayout import BoxLayout
 from kivy.properties import ObjectProperty
 from kivy.graphics.texture import Texture
 from scipy import io
@@ -43,7 +43,7 @@ def base_plot(ui, ccmap, samp=16):
     fig = Figure(facecolor='#FAF0E6')
     ax = fig.gca(projection='3d', facecolor='#FAF0E6')
     ax._axis3don = False  # disable 3d axis on plot
-    fig.set_dpi(400) # with this we should render canvas of size 3200x2400, should be enough even for 4k display :)
+    fig.set_dpi(400)  # with this we should render canvas of size 3200x2400, should be enough even for 4k display :)
     # canvas is not write anywhere, and this settings don't decrease speed significantly.
     y1, x1 = ui.shape
     ax.auto_scale_xyz([0, x1], [0, x1], [0, 15])
@@ -110,8 +110,6 @@ class SpecSlider(Slider):
         Override on_touch_up method of Slider class, otherwise is hard to make changes, only when we stop using slider,
         and with default events/binds it's only possible with each change of value.
         It handle event, and it will change the image texture within app.
-        :param touch:
-        :return:
         """
         if touch.grab_current is not self:
             return
@@ -121,18 +119,37 @@ class SpecSlider(Slider):
         azim = root.ids.azimuth_slider.value
         elev = root.ids.elevation_slider.value  # get value of two slider used in app
         s, x, y = change_angle(azim, elev)
-        tex = Texture.create(size=(x, y), colorfmt='rgb')
-        tex.blit_buffer(s, bufferfmt="ubyte", colorfmt="rgb")
-        tex.flip_vertical()
-        root.ids.surf_image.texture = tex
+        root.make_texture(s, x, y)
 
 
-class LoadDialog(FloatLayout):
+class LoadDialog(BoxLayout):
     """
     Simple class used to make popup with FileBrowser widget
     """
     load = ObjectProperty(None)
     cancel = ObjectProperty(None)
+
+
+class WrongFileDialog(Popup):
+    """
+    Class to display popup when user try to open unsupported file. Appearance is defined in kv file
+    """
+
+    def reload(self):
+        """
+        It's called when user press ok button, on popup. It's closed this popup, and reload LoadDialog popup.
+        """
+        self.dismiss()
+        app = App.get_running_app()  # get instance of current app
+        root = app.root
+        root._popup.open()
+
+
+class SelectMatVariable(Popup):
+    """
+    Class to display popup when loading .mat file with many variables
+    """
+    values = ObjectProperty(None)
 
 
 class MainWidget(Widget):
@@ -156,37 +173,73 @@ class MainWidget(Widget):
         """
         Create and open popup with filebrowser widget, and bind events of filebrowser widget with methods from this class.
         """
-        content = LoadDialog(load=self.load, cancel=self.dismiss_popup)
+        content = LoadDialog(load=self.open_file, cancel=self.dismiss_popup)
         self._popup = Popup(title="Load file", content=content,
                             size_hint=(1, 1))
         self._popup.open()
 
-    def load(self, file2open):
+    def mat_callback(self, instance):
+        """
+        called when user closed the popup in which he selected variable from matlab file. Load matlab file, load selected
+        variable and call prepare_data
+        """
+        surf = io.loadmat(self.file2open)
+        surf = surf[self._popup3.ids.mat_spinner.text]
+        surf = np.angle(surf)
+        surf = unwrap_phase(surf)
+        self.prepare_data(surf)
+
+    def open_file(self, file2open):
         """
         Open selected file, it handle .mat files and basic graphical files. Not nice approach using file extension.
-        it prepare file, change to 2D array, smooth data with gaussian_filter
+        after file was open it call prepare_data method to handle open popup and prepare data to display
         :param file2open: path to file to open, with it filename.
+        """
+        if file2open[-4:].lower() == '.mat':
+            self.mat_structure = io.whosmat(file2open)
+            if len(self.mat_structure) == 1:
+                surf = io.loadmat(file2open)
+                surf = surf[self.mat_structure[0][0]]
+                surf = np.angle(surf)
+                surf = unwrap_phase(surf)
+                self.prepare_data(surf)
+            if len(self.mat_structure) > 1:
+                self.variable_tuple = tuple(x[0] for x in self.mat_structure)
+                self._popup3 = SelectMatVariable(values=self.variable_tuple)
+                self._popup3.open()
+                self.file2open = file2open
+                self._popup3.bind(on_dismiss=self.mat_callback)
+
+        elif file2open[-4:].lower() == '.jpg' or file2open[-4:].lower() == '.bmp' or file2open[-4:].lower() == '.png':
+            surf = imread(file2open, flatten=1).astype(np.float32)
+            self.prepare_data(surf)
+        else:
+            self.dismiss_popup()
+            self._popup2 = WrongFileDialog()
+            self._popup2.open()
+
+    def prepare_data(self, surf):
+        """
+        this method prepare data to display, it smooth loaded data with gaussian filter, then it call function to plot
+        data, another to make texture for picture, and reset values of sliders to default. And the end it close
+        filechooser popup.
+        :param surf: 2d array with loaded values from the file
         :return:
         """
-        # todo handle unsupported files types, and make popup to choose again.
-        if file2open[-4:].lower() == '.mat':
-            surf = io.loadmat(file2open)
-            surf = surf['u']
-            surf = np.angle(surf)
-            surf = unwrap_phase(surf)
-        elif file2open[-4:].lower() == '.jpg' or file2open[-4:].lower() == '.png' or file2open[-4:].lower() == '.bmp':
-            surf = imread(file2open, flatten=1).astype(np.float32)
         surf = gaussian_filter(surf, 10)  # some magic number for smoothing data :/
         s, x, y = base_plot(surf, self.ids.cmap_spinner.text)
-        tex = Texture.create(size=(x, y), colorfmt='rgb')
-        tex.blit_buffer(s, bufferfmt="ubyte", colorfmt="rgb")
-        tex.flip_vertical()
-        self.ids.surf_image.texture = tex
+        self.make_texture(s, x, y)
         self.ids.elevation_slider.value = 30
         self.ids.azimuth_slider.value = -60  # set azimuth and elevation slider value
         self.ids.elevation_slider.disabled = False
         self.ids.azimuth_slider.disabled = False  # make slider active, if they were disabled before.
-        self.dismiss_popup()  # close popup with filebrowser widget
+        self.dismiss_popup()  # close popup with filebrowser widget'''
+
+    def make_texture(self, s, x, y):
+        tex = Texture.create(size=(x, y), colorfmt='rgb')
+        tex.blit_buffer(s, bufferfmt="ubyte", colorfmt="rgb")
+        tex.flip_vertical()
+        self.ids.surf_image.texture = tex
 
 
 class ImageApp(App):
