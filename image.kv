@@ -2,15 +2,14 @@
 #:import Win kivy.core.window.Window
 #:import FileBrowser kivy.garden.filebrowser
 #:import plt matplotlib.pyplot
-# in this file are defined nearly all visual aspects of app
 <MainWidget>:
     canvas:
         Color:
             rgba: 250/255, 240/255, 230/255,1
+            # change default background of app from gray to some white-ish
         Rectangle:
             source: 'blank.png'
             size: self.size
-            # change default background of app from gray to some white-ish
     BoxLayout:
         size: Win.size
         id: mainbox
@@ -24,7 +23,7 @@
                 width: '128dp'
                 height: '36dp'
                 size_hint: (None, None)
-                on_release: root.show_load()
+                on_release: root.show_load()  # after we stop pressing button it will call show_load from MainWidget class
             Spinner:
                 id: cmap_spinner
                 text: 'rainbow'
@@ -35,6 +34,12 @@
                 #values: ('rainbow', 'viridis', 'plasma', 'inferno', 'magma', 'jet', 'gray') # simpler list of cmaps
                 values: tuple(m for m in plt.cm.datad if not m.endswith("_r"))
                 # probably overkill, spinner with all available colormaps for matplotlib
+            Button:
+                text: 'Settings'
+                width: '128dp'
+                height: '36dp'
+                size_hint: (None, None)
+                on_release: app.open_settings()
         BoxLayout:
             height: '36dp'
             spacing: '8dp'
@@ -79,18 +84,23 @@
     pos: root.pos
     orientation: "vertical"
     FileBrowser:
+        #widget to select file
         select_string: 'Select'
-        #on_submit: root.load(self.selection[0])
+        on_submit: root.load(self.selection[0])  # called when two-click on file
         on_canceled: root.cancel()
-        on_success: root.load(self.selection[0])
+        on_success: root.load(self.selection[0])  # called when pressed select button
 			
 <WrongFileDialog>:
     title: 'Wrong File'
-    size_hint: 1.0, 0.6
+    size_hint: None, None
+    size: Win.width / 2, Win.height / 2
     auto_dismiss: False
     BoxLayout:
         orientation: 'vertical'
         Label:
+            halign: 'center'
+            valign: 'middle'
+            text_size: self.width, None  # otherwise text can display outside of popup
             text: 'Unsupported file type. Supported file types are: matlab mat files and image files. Please choose again.'
         Button:
             text: 'Ok'
@@ -98,15 +108,16 @@
             height: '36dp'
             width: '128dp'
             pos_hint: {'center_x': 0.5}
-            on_release: root.reload()
+            on_release: root.reload()  # call reload method of class
 
 <SelectMatVariable>:
     title: 'Select Variable'
     auto_dismiss: False
-    size_hint: .8, .6
+    size_hint: None, None
+    size: Win.width / 2, Win.height / 2
     BoxLayout:
         orientation: 'vertical'
-        spacing: 3*self.height/4
+        spacing: 3*self.height/5
         Spinner:
             id: mat_spinner
             size_hint: None, None
@@ -115,11 +126,11 @@
             width: '128dp'
             text: root.values[0]
             values: root.values
-            sync_height: True
+            sync_height: True  # values from which we selected have the same height as spinner
         Button:
             text: 'Ok'
             height: '36dp'
             width: '128dp'
             pos_hint: {'center_x': 0.5}
             size_hint: None, None
-            on_release: root.dismiss()
+            on_release: root.dismiss()  # just call normal method of popup class
