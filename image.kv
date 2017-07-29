@@ -23,7 +23,7 @@
                 width: '128dp'
                 height: '36dp'
                 size_hint: (None, None)
-                on_release: root.show_load()  # after we stop pressing button it will call show_load from MainWidget class
+                on_release: root.popup.open()  # after we stop pressing button it will call show_load from MainWidget class
             Spinner:
                 id: cmap_spinner
                 text: 'rainbow'
@@ -80,14 +80,14 @@
                     disabled: True
 
 <LoadDialog>:
-    size: root.size
+    title: 'Load File'
+    size_hint: 1, 1
     pos: root.pos
-    orientation: "vertical"
     FileBrowser:
         #widget to select file
         select_string: 'Select'
         on_submit: root.load(self.selection[0])  # called when two-click on file
-        on_canceled: root.cancel()
+        on_canceled: root.dismiss()
         on_success: root.load(self.selection[0])  # called when pressed select button
 			
 <WrongFileDialog>:
